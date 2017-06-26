@@ -32,5 +32,5 @@ $plugin->maturity  = MATURITY_STABLE;
 $plugin->release   = "3.0+ (2015111610)";
 
 $plugin->dependencies = array(
-    'mod_quiz' => ANY_VERSION,
+    'mod_quiz' => ANY_VERSION
 );
