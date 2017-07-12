@@ -24,12 +24,12 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->version   = 2017062000;
-$plugin->requires  = 2014111012.00; // Moodle 2.8.
+$plugin->version   = 2017071100;
+$plugin->requires  = 2014111012.00;
 $plugin->cron      = 1;
 $plugin->component = 'local_examdelay';
 $plugin->maturity  = MATURITY_STABLE;
-$plugin->release   = "2.8+ (2014111012)";
+$plugin->release   = "2.8+ (2017071100)";
 
 $plugin->dependencies = array(
     'mod_quiz' => ANY_VERSION,
