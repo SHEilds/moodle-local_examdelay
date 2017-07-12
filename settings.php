@@ -15,7 +15,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Plugin events
+ * Global Settings
  *
  * @package   local_examdelay
  * @copyright 2017 Adam King, SHEilds eLearning
@@ -24,10 +24,16 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$handlers = array(
-    'quiz_attempt_submitted' => array (
-        'handlerfile'     => '/local/examdelay/observers.php',
-        'handlerfunction' => 'attemptHander',
-        'schedule'        => 'instant',
-    )
-);
+if ($hassiteconfig) {
+    $ADMIN->add('modules', new admin_category('examdelay', get_string('plugingroup', 'local_examdelay')));
+
+    $page = new admin_settingpage('examdelaypage', get_string('pluginname', 'local_examdelay'));
+
+    $page->add(new admin_setting_configduration('local_examdelay/examdelay',
+                                            get_string('examdelay', 'local_examdelay'),
+                                            get_string('examdelay_desc', 'local_examdelay'),
+                                            0,      // Seconds
+                                            1));    // Seconds
+
+    $ADMIN->add('examdelay', $page);
+}

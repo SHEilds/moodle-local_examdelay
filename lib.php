@@ -31,6 +31,11 @@ global $CFG, $PAGE, $USER, $DB, $COURSE;
 require_once("$CFG->dirroot/local/examdelay/exam.php");
 require_once("$CFG->dirroot/message/lib.php");
 
+// Define the DELAY constant from config.
+$config = get_config('local_examdelay');
+$examdelay = "PT".$config->examdelay."S" ?? "PT0S";
+define('DELAY', $examdelay);
+
 $adminpagetypes = array('mod-quiz-mod', 'mod-quiz-edit');
 $clientpagetypes = array('mod-quiz-view', 'mod-quiz-attempt');
 
@@ -46,10 +51,19 @@ if (in_array($PAGE->pagetype, array_merge($adminpagetypes, $clientpagetypes))) {
         $user = $USER->id;
         $instance = $PAGE->cm->instance;
 
+        print_object(array('place'=>'holder'));
+        $isex = Exam::is_exam($instance) ? "IS EXAM" : "IS NOT EXAM";
+        print_object($isex);
+
         if (Exam::is_exam($instance)) {
             // Test if the user has made an attempt on this exam before.
             $latestAttempt = Exam::get_exam_attempt($instance, $user);
             $parent = Exam::get_parent($instance);
+
+            $latempt = !empty($latestAttempt) ? "NOT EMPTY" : "EMPTY";
+            print_object($latempt);
+            print_object($latestAttempt);
+            print_object(Exam::get_parent($instance));
 
             // If the user has made an attempt before, make sure it's not on
             // this instance; also check if their delay is over.
@@ -58,11 +72,21 @@ if (in_array($PAGE->pagetype, array_merge($adminpagetypes, $clientpagetypes))) {
                     $context = \context_module::instance($PAGE->cm->id);
                     $previousAttempt = Exam::get_user_attempt($instance, $user);
 
+                    print_object(array('instance' => $instance, 'user' => $user));
+                    $prevtempt = !empty($previousAttempt) ? "PREV NOT EMPTY" : "PREV EMPTY";
+                    print_object($prevtempt);
+                    print_object($previousAttempt);
+
+                    $rdy = Exam::is_ready($latestAttempt) ? "READY" : "NOT READY";
+                    print_object($rdy);
+
                     // If the student's previous attempt is finished.
                     if (!empty($previousAttempt)) {
                         if ($previousAttempt->state === "finished" || $previousAttempt->state === "inprogress") {
                             // Let Moodle handle this case.
                         } else {
+                            print_object(Exam::is_ready($latestAttempt) ? "READY" : "NOT READY");
+
                             // If the exam has been touched before and is not ready to be re-attempted, redirect the user.
                             if (!Exam::is_ready($latestAttempt)) {
                                 if (!has_capability('mod/quiz:manage', $context)) {
