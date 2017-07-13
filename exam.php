@@ -35,7 +35,13 @@ const ATTEMPTS_TABLE = 'quiz_attempts';
 const EXAMS_TABLE = 'local_examdelay_exams';
 const CHILD_TABLE = 'local_examdelay_children';
 
-const DELAY = 'P10D';
+// Define the DELAY constant from config.
+$config = get_config('local_examdelay');
+$examdelay = $config->examdelay;
+$delayperiod = $config->period;
+$delay = $examdelay * $delayperiod;
+$delay = "PT".$delay."S";
+define('DELAY', $delay);
 
 class Exam {
     /**

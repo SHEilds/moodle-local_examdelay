@@ -25,3 +25,8 @@ defined('MOODLE_INTERNAL') || die();
 
 $string['pluginname'] = 'Exam Delay';
 $string['plugingroup'] = 'Exam Delay';
+
+$string['examdelay'] = 'Exam Delay';
+$string['examdelay_desc'] = 'The delay, in seconds, between exam attempts.';
+$string['period'] = 'Delay Period';
+$string['period_desc'] = 'The scale of the delay. A multiplier for the Exam Delay.';

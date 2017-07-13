@@ -54,8 +54,6 @@ $PAGE->set_title("Exam Not Ready");
 $PAGE->set_heading("Exam Attempt");
 $PAGE->set_url($CFG->wwwroot.'/examerror.php');
 
-echo $OUTPUT->header();
-
 // Print error to the user.
 switch($error) {
     case NOTREADY:
@@ -66,20 +64,24 @@ switch($error) {
             ));
             redirect($url);
         } else {
+            echo $OUTPUT->header();
             echo "<p>If you have failed your first attempt of the exam, you must wait 10 days and you can then attempt the next exam. ".
                 "Please try the next exam in $timestring.</p>";
         }
         break;
     case ATTEMPTED:
         $error = ATTEMPTED;
+        echo $OUTPUT->header();
         echo "<p>This exam has already been attempted, please try the next one.</p>";
         break;
     case NOTEXISTS:
         $error = NOTEXISTS;
+        echo $OUTPUT->header();
         echo "<p>This exam no longer exists somehow, please contact an administrator.</p>";
         break;
     default:
         $error = DEF;
+        echo $OUTPUT->header();
         echo "<p>Something went wrong trying to attempt an exam.</p>";
         break;
 }
