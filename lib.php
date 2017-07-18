@@ -22,8 +22,6 @@
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-namespace local_examdelay;
-
 defined('MOODLE_INTERNAL') || die();
 global $CFG, $PAGE, $USER, $DB, $COURSE;
 
@@ -32,13 +30,35 @@ require_once("$CFG->dirroot/local/examdelay/exam.php");
 $adminpagetypes = array('mod-quiz-mod', 'mod-quiz-edit');
 $clientpagetypes = array('mod-quiz-view', 'mod-quiz-attempt');
 
+/**
+* Insert the 'Exam Delay' link into the navigation.
+*/
+function local_examdelay_extends_settings_navigation($settings)
+{
+    local_examdelay_extend_settings_navigation($settings);
+}
+
+function local_examdelay_extend_settings_navigation($settings)
+{
+    global $PAGE, $CFG;
+
+    $adminpagetypes = array('mod-quiz-mod', 'mod-quiz-edit');
+    $clientpagetypes = array('mod-quiz-view', 'mod-quiz-attempt');
+
+    if (in_array($PAGE->pagetype, array_merge($adminpagetypes, $clientpagetypes))) {
+        if (has_capability('mod/quiz:manage', $PAGE->cm->context)) {
+            $branch = $settings->get('modulesettings');
+            $branch->add(
+                "Exam Delay",
+                new moodle_url("/local/examdelay/edit.php", array('id' => $PAGE->cm->instance)),
+                navigation_node::TYPE_SETTING, null, 'mod_exam_edit'
+            );
+        }
+    }
+}
+
 // Only process the logic if the user lands on a Quiz page of any kind.
 if (in_array($PAGE->pagetype, array_merge($adminpagetypes, $clientpagetypes))) {
-    // Load page-dependant javascript for view editing.
-    if ($PAGE->pagetype === 'mod-quiz-mod') {
-        $PAGE->requires->js("/local/examdelay/mod.js");
-    }
-
     // Perform client checks on quiz load.
     if (in_array($PAGE->pagetype, $clientpagetypes)) {
         $user = $USER->id;
@@ -62,7 +82,7 @@ if (in_array($PAGE->pagetype, array_merge($adminpagetypes, $clientpagetypes))) {
                             // Let Moodle handle this case.
                         } else {
                             // If the exam has not been touched before and is not ready to be re-attempted, redirect the user.
-                            if (!Exam::is_ready($latestAttempt)) {
+                            if (!Exam::is_ready($latestAttempt, $parent)) {
                                 if (!has_capability('mod/quiz:manage', $context)) {
                                     $url = new \moodle_url("/local/examdelay/examerror.php", array(
                                         'id' => $instance,
@@ -76,7 +96,7 @@ if (in_array($PAGE->pagetype, array_merge($adminpagetypes, $clientpagetypes))) {
                         }
                     } else {
                         // If the exam has not been touched before and is not ready to be re-attempted, redirect the user.
-                        if (!Exam::is_ready($latestAttempt)) {
+                        if (!Exam::is_ready($latestAttempt, $parent)) {
                             if (!has_capability('mod/quiz:manage', $context)) {
                                 $url = new \moodle_url("/local/examdelay/examerror.php", array(
                                     'id' => $instance,

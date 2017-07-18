@@ -22,7 +22,7 @@
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-namespace local_examdelay;
+// namespace local_examdelay;
 
 date_default_timezone_set('UTC');
 
@@ -34,14 +34,6 @@ const RELATIONS_TABLE = 'local_examdelay_relations';
 const ATTEMPTS_TABLE = 'quiz_attempts';
 const EXAMS_TABLE = 'local_examdelay_exams';
 const CHILD_TABLE = 'local_examdelay_children';
-
-// Define the DELAY constant from config.
-$config = get_config('local_examdelay');
-$examdelay = $config->examdelay;
-$delayperiod = $config->period;
-$delay = $examdelay * $delayperiod;
-$delay = "PT".$delay."S";
-define('DELAY', $delay);
 
 class Exam {
     /**
@@ -116,7 +108,9 @@ class Exam {
     public static function get_time_left_instance($instance) {
         global $DB, $USER;
 
+        $parent = Exam::get_parent($instance);
         $lastAttempt = Exam::get_exam_attempt($instance, $USER->id);
+        $delay = "PT".$parent->delay."S";
 
         if (empty($lastAttempt)) {
             return false;
@@ -124,7 +118,7 @@ class Exam {
             $submitted = new \DateTime("@$lastAttempt->timefinish");
             $submitted->setTimezone(new \DateTimeZone("UTC"));
 
-            $available = $submitted->add(new \DateInterval(DELAY));
+            $available = $submitted->add(new \DateInterval($delay));
 
             $present = new \DateTime('now');
             $present->setTimezone(new \DateTimeZone("UTC"));
@@ -133,7 +127,6 @@ class Exam {
                 return false;
             } else {
                 $diff = $present->diff($available);
-
                 return $diff;
             }
         }
@@ -167,13 +160,14 @@ class Exam {
      *  @param Object Attempt object from the database.
      *  @return boolean Whether the exam is ready to be re-attempted by the current user.
      */
-    public static function is_ready($attempt) {
+    public static function is_ready($attempt, $parent) {
         global $DB;
 
+        $delay = "PT".$parent->delay."S";
         $finished = new \DateTime("@$attempt->timefinish");
         $finished->setTimezone(new \DateTimeZone("UTC"));
         $present = new \DateTime('now');
-        $ready = $finished->add(new \DateInterval(DELAY));
+        $ready = $finished->add(new \DateInterval($delay));
 
         return ($ready < $present) ? true : false;
     }
@@ -323,6 +317,15 @@ class Exam {
         }
     }
 
+    public static function update_parent($parentId, $delay) {
+        global $DB;
+
+        $parent = $DB->get_record(EXAMS_TABLE, array('id' => $parentId));
+        $parent->delay = $delay;
+
+        $DB->update_record(EXAMS_TABLE, $parent);
+    }
+
     public static function update_child($instance, $parent) {
         global $DB;
 
@@ -332,8 +335,6 @@ class Exam {
         $relationship = new \stdClass();
         $relationship->child = $child->id;
         $relationship->parent = $parent->id;
-
-
 
         $DB->delete_records(RELATIONS_TABLE, array('child' => $child->id, 'parent' => $parent->id));
         $DB->insert_record(RELATIONS_TABLE, $relationship);

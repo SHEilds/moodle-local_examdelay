@@ -136,7 +136,7 @@ function exam_update_request($instance, $exam, $parent) {
 }
 
 function exam_get_current($instance) {
-    return json_encode(Exam::get_parent($instance));
+    return Exam::get_parent($instance);
 }
 
 function exam_get_time($instance) {
