@@ -44,7 +44,10 @@
         if ($parent !== false) {
             $mform->addElement('editor', 'exammessage', "Error Message")->setValue(array('text' => $parent->message));
         } else {
-            $mform->addElement('editor', 'exammessage', "Error Message");
+            $mform->addElement('editor', 'exammessage', "Error Message")->setValue(
+                array('text' => "<p>If you have failed your first attempt of the exam, you must ".
+                                "wait <b>@delay</b> and you can then attempt the next exam.</p>")
+            );
         }
 
         $mform->setType('exammessage', PARAM_RAW);

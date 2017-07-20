@@ -70,7 +70,7 @@ switch($error) {
                 $timestring = "in " . $timeleft->format('%d days, %h hours, %i minutes and %s seconds');
             }
 
-            $message = "<p>If you have failed your first attempt of the exam, you must wait <b>$delay</b> and you can then attempt the next exam.</p>";
+            $message = "<p>If you have failed your first attempt of the exam, you must wait <b>@delay</b> and you can then attempt the next exam.</p>";
             if (!empty($parent->message) && $parent->message !== "NULL") {
                 $message = $parent->message;
                 $message = str_replace('@delay', $delay, $message);
