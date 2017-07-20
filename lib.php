@@ -47,7 +47,8 @@ function local_examdelay_extend_settings_navigation($settings)
 
     if (in_array($PAGE->pagetype, array_merge($adminpagetypes, $clientpagetypes))) {
         if (has_capability('mod/quiz:manage', $PAGE->cm->context)) {
-            $branch = $settings->get('modulesettings');
+            $keys = $settings->get_children_key_list();
+            $branch = $settings->get($keys[0]);
             $branch->add(
                 "Exam Delay",
                 new moodle_url("/local/examdelay/edit.php", array('id' => $PAGE->cm->instance)),
@@ -120,8 +121,4 @@ if (in_array($PAGE->pagetype, array_merge($adminpagetypes, $clientpagetypes))) {
             }
         }
     }
-}
-
-if ($PAGE->pagetype == 'course-view-topics') {
-    $PAGE->requires->js("/local/examdelay/course.js");
 }

@@ -21,11 +21,13 @@
  * @copyright 2017 Adam King, SHEilds eLearning
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+
 header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
 header("Cache-Control: post-check=0, pre-check=0", false);
 header("Pragma: no-cache");
 
 date_default_timezone_set('UTC');
+
 
 require_once(__DIR__ . '/../../config.php');
 require_once("$CFG->dirroot/user/profile/lib.php");
@@ -50,6 +52,8 @@ $formArgs = array(
     'args' => array('instance' => $instance)
 );
 
+$refresh = "<script>window.location.replace('".$continue->out()."')</script>";
+
 // Forms are designed to maintain the instance querystring.
 $createParentForm = new examdelay_create_form($formArgs['url'], $formArgs['args']);
 $selectParentForm = new examdelay_edit_form($formArgs['url'], $formArgs['args']);
@@ -58,7 +62,7 @@ $deleteParentForm = new examdelay_delete_form($formArgs['url'], $formArgs['args'
 // Exam Edit Form.
 echo '<h1>Edit Instance</h1>';
 if ($selectParentForm->is_cancelled()) {
-	redirect($continue);
+    echo $refresh;
 } elseif ($fromform = $selectParentForm->get_data()) {
     // Process the data from the form.
 	$formdata = $selectParentForm->get_data();
@@ -69,7 +73,11 @@ if ($selectParentForm->is_cancelled()) {
             Exam::delete_from_instance($instance);
         } else {
             Exam::update_child($instance, $formdata->parentselect);
-            Exam::update_parent($formdata->parentselect, $formdata->examdelay);
+            Exam::update_parent(
+                $formdata->parentselect,
+                $formdata->examdelay,
+                $formdata->exammessage['text']
+            );
         }
     } else {
         if ($formdata->exammode == true) {
@@ -85,7 +93,7 @@ if ($selectParentForm->is_cancelled()) {
         }
     }
 
-    $selectParentForm->display();
+    // echo $refresh;
 } else {
     $selectParentForm->display();
 }
@@ -93,13 +101,13 @@ if ($selectParentForm->is_cancelled()) {
 // Parent Create Form.
 echo '<h1>Create Exam</h1>';
 if ($createParentForm->is_cancelled()) {
-	redirect($continue);
+    echo $refresh;
 } elseif ($fromform = $createParentForm->get_data()) {
     // Process the data from the form.
 	$formdata = $createParentForm->get_data();
     Exam::create_parent($formdata->parentname);
 
-    $createParentForm->display();
+    echo $refresh;
 } else {
     $createParentForm->display();
 }
@@ -107,13 +115,13 @@ if ($createParentForm->is_cancelled()) {
 // Delete Exam Form.
 echo '<h1>Delete Exam</h1>';
 if ($deleteParentForm->is_cancelled()) {
-    redirect($continue);
+    echo $refresh;
 } elseif ($fromform = $deleteParentForm->get_data()) {
     if (!empty($fromform->deleteparent)) {
         Exam::delete_parent($fromform->deleteparent);
     }
 
-    $deleteParentForm->display();
+    echo $refresh;
 } else {
     $deleteParentForm->display();
 }

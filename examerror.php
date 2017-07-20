@@ -42,31 +42,42 @@ $course = required_param('course', PARAM_INT);
 
 $latestAttempt = Exam::get_exam_attempt($instance, $USER->id);
 $timeleft = Exam::get_time_left_instance($instance);
-
-$timestring = "ready";
-if ($timeleft !== false) {
-    $timestring = $timeleft->format('%d days, %h hours, %i minutes and %s seconds');
-}
+$parent = Exam::get_parent($instance);
 
 $PAGE->set_context(get_system_context());
 $PAGE->set_pagelayout('admin');
 $PAGE->set_title("Exam Not Ready");
 $PAGE->set_heading("Exam Attempt");
-$PAGE->set_url($CFG->wwwroot.'/examerror.php');
+$PAGE->set_url($CFG->wwwroot."/local/examdelay/examerror.php?id=$instance&error=$error&cmid=$cmid&course=$course");
+$PAGE->set_periodic_refresh_delay(5);
 
 // Print error to the user.
 switch($error) {
     case NOTREADY:
         $error = NOTREADY;
-        if ($timestring === "ready") {
+        if ($timeleft == false) {
             $url = new \moodle_url("/course/view.php", array(
                 'id' => $course
             ));
             redirect($url);
         } else {
+            $dateTimeEmpty = new \DateTime('@0');
+            $dateTimeFull  = new \DateTime("@$parent->delay");
+            $delay = $dateTimeEmpty->diff($dateTimeFull)->format('%d days, %h hours, %i minutes and %s seconds');
+
+            $timestring = "now";
+            if ($timeleft !== false) {
+                $timestring = "in " . $timeleft->format('%d days, %h hours, %i minutes and %s seconds');
+            }
+
+            $message = "<p>If you have failed your first attempt of the exam, you must wait <b>$delay</b> and you can then attempt the next exam.</p>";
+            if (!empty($parent->message) && $parent->message !== "NULL") {
+                $message = $parent->message;
+                $message = str_replace('@delay', $delay, $message);
+            }
+
             echo $OUTPUT->header();
-            echo "<p>If you have failed your first attempt of the exam, you must wait 10 days and you can then attempt the next exam. ".
-                "Please try the next exam in $timestring.</p>";
+            echo $message . "<p style='text-align: center;'>Please try the next exam <b>$timestring</b>.</p>";
         }
         break;
     case ATTEMPTED:

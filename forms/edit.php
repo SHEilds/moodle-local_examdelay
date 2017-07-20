@@ -32,26 +32,30 @@
         $parents = Exam::get_all_exams();
 
         $values = array();
-        foreach ($parents as $parent) {
-            $values[$parent->id] = $parent->name;
+        foreach ($parents as $parenttmp) {
+            $values[$parenttmp->id] = $parenttmp->name;
         }
 
         $mform = $this->_form;
         $mform->addElement('selectyesno', 'exammode', get_string('exammode', 'local_examdelay'));
         $mform->addElement('select', 'parentselect', get_string('parentname', 'local_examdelay'), $values);
         $mform->addElement('duration', 'examdelay', get_string('examdelay', 'local_examdelay'));
-        $mform->setDefault('exammode', $exammode);
-        $mform->setDefault('examdelay', $parent->delay);
 
         if ($parent !== false) {
-            $mform->setDefault('parentselect', $parent);
+            $mform->addElement('editor', 'exammessage', "Error Message")->setValue(array('text' => $parent->message));
+        } else {
+            $mform->addElement('editor', 'exammessage', "Error Message");
+        }
+
+        $mform->setType('exammessage', PARAM_RAW);
+        $mform->setDefault('exammode', $exammode);
+
+        if ($parent !== false) {
+            $mform->setDefault('parentselect', $parent->id);
+            $mform->setDefault('examdelay', $parent->delay);
         }
 
         $this->add_action_buttons(true, "Submit");
-    }
-
-    function validation($data, $files) {
-        return array();
     }
 }
 
@@ -64,11 +68,7 @@ class examdelay_create_form extends moodleform {
         $mform = $this->_form;
         $mform->addElement('text', 'parentname', get_string('parentname', 'local_examdelay'));
         $mform->setType('parentname', PARAM_TEXT);
-        $this->add_action_buttons(false, "Create");
-    }
-
-    function validation($data, $files) {
-        return array();
+        $this->add_action_buttons(true, "Create");
     }
 }
 
@@ -86,10 +86,6 @@ class examdelay_delete_form extends moodleform {
 
         $mform = $this->_form;
         $mform->addElement('select', 'deleteparent', get_string('deleteparent', 'local_examdelay'), $values);
-        $this->add_action_buttons(false, "Delete");
-    }
-
-    function validation($data, $files) {
-        return array();
+        $this->add_action_buttons(true, "Delete");
     }
 }

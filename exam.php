@@ -317,10 +317,12 @@ class Exam {
         }
     }
 
-    public static function update_parent($parentId, $delay) {
+    public static function update_parent($parentId, $delay, $message) {
         global $DB;
 
         $parent = $DB->get_record(EXAMS_TABLE, array('id' => $parentId));
+
+        $parent->message = $message;
         $parent->delay = $delay;
 
         $DB->update_record(EXAMS_TABLE, $parent);

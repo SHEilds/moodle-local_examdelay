@@ -27,7 +27,7 @@ function xmldb_local_examdelay_upgrade($oldversion) {
         // Update the Exam database to remove the children column.
         $dbman->drop_field("{$database}exams", "children");
         // Drop the existing relations table.
-        $dbman->drop_table("{$database}relations");
+        $dbman->drop_table(new xmldb_table("{$database}relations"));
 
         // Define the new relations table.
         $relationsTable = new xmldb_table('local_examdelay_relations');
@@ -42,7 +42,7 @@ function xmldb_local_examdelay_upgrade($oldversion) {
         // Define the new children table.
         $relationsTable = new xmldb_table('local_examdelay_children');
         $relationsTable->add_field('id', XMLDB_TYPE_INTEGER, 10, null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
-        $relationsTable->add_field('instance', XMLDB_TYPE_INTEGER, 10, null, XMLDB_NOTNULL, false, null);
+        $relationsTable->add_field('instance', XMLDB_TYPE_INTEGER, 10, null, XMLDB_NOTNULL, null, null);
         $relationsTable->add_field('parent', XMLDB_TYPE_INTEGER, 10, null, XMLDB_NOTNULL, false, null);
         $relationsTable->add_key('primary', XMLDB_KEY_PRIMARY, array('id'));
 
@@ -61,5 +61,24 @@ function xmldb_local_examdelay_upgrade($oldversion) {
 
         // Mark examdelay save point.
         upgrade_plugin_savepoint(true, 2017060600, 'local', 'examdelay');
+    } if ($oldversion > 2017060600 && $oldversion < 2017071904) {
+        $examsTable = new xmldb_table('local_examdelay_exams');
+        $delayField = new xmldb_field('delay', XMLDB_TYPE_INTEGER, 10, null, XMLDB_NOTNULL, null, 86400);
+        $messageField = new xmldb_field('message', XMLDB_TYPE_TEXT, null, null, null, null, null);
+
+        // Add the delay field if it doesn't exist.
+        if (!$dbman->field_exists($examsTable, $delayField)) {
+            $dbman->add_field($examsTable, $delayField);
+        }
+
+        // Add the message field if it doesn't exist.
+        if (!$dbman->field_exists($examsTable, $messageField)) {
+            $dbman->add_field($examsTable, $messageField);
+        }
+
+        // Mark examdelay save point.
+        upgrade_plugin_savepoint(true, 2017071904, 'local', 'examdelay');
     }
+
+    return true;
 }
