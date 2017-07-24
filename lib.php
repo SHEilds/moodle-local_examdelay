@@ -31,11 +31,6 @@ global $CFG, $PAGE, $USER, $DB, $COURSE;
 require_once("$CFG->dirroot/local/examdelay/exam.php");
 require_once("$CFG->dirroot/message/lib.php");
 
-// Define the DELAY constant from config.
-$config = get_config('local_examdelay');
-$examdelay = "PT".$config->examdelay."S" ?? "PT0S";
-define('DELAY', $examdelay);
-
 $adminpagetypes = array('mod-quiz-mod', 'mod-quiz-edit');
 $clientpagetypes = array('mod-quiz-view', 'mod-quiz-attempt');
 
