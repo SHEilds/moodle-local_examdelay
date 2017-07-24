@@ -22,7 +22,7 @@
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-namespace local_examdelay;
+// namespace local_examdelay;
 
 date_default_timezone_set('UTC');
 
@@ -35,320 +35,326 @@ const ATTEMPTS_TABLE = 'quiz_attempts';
 const EXAMS_TABLE = 'local_examdelay_exams';
 const CHILD_TABLE = 'local_examdelay_children';
 
-// Define the DELAY constant from config.
-$config = get_config('local_examdelay');
-$examdelay = "PT".$config->examdelay."S" ?? "PT0S";
-define('DELAY', $examdelay);
-
 class Exam {
-    /**
-     *  A method to determine whether the current user has a previous
-     *  attempt on the examination.
-     *
-     *  @return boolean Whether the user has attempted the exam before.
-     */
-    public static function has_user_attempt($instance, $user) {
-        global $DB;
-
-        $attempt = $DB->get_record(ATTEMPTS_TABLE, array(
-            'quiz' => $instance,
-            'userid' => $user
-        ));
-
-        return (!empty($attempt)) ? true : false;
-    }
-
-    public static function get_user_attempt($instance, $user) {
-        global $DB;
-
-        $attempt = $DB->get_record(ATTEMPTS_TABLE, array(
-            'quiz' => $instance,
-            'userid' => $user
-        ));
-
-        return $attempt;
-    }
-
-    public static function get_exam_attempt($instance, $user) {
-        global $DB;
-
-        $attempt = false;
-        $child = $DB->get_record(CHILD_TABLE, array('instance' => $instance));
-        $parent = $DB->get_record(EXAMS_TABLE, array('id' => $child->parent));
-        $children = $DB->get_records(CHILD_TABLE, array('parent' => $parent->id));
-
-        $index = 0;
-        $childQuery = '(';
-        foreach ($children as $key => $child) {
-            $childQuery .= $child->instance;
-
-            if ($index !== count($children) - 1) {
-                $childQuery .= ',';
-            }
-
-            $index++;
-        }
-        $childQuery .= ')';
-
-        if ($childQuery !== '()') {
-            if (!empty($child)) {
-                $latestAttempt = $DB->get_record_sql(
-                    'SELECT * FROM mdl_'.ATTEMPTS_TABLE.' WHERE quiz IN '.
-                    $childQuery.
-                    ' AND userid = :userid AND state = :state AND timefinish < UNIX_TIMESTAMP() ORDER BY timefinish DESC LIMIT 1',
-                    array(
-                        'userid' => $user,
-                        'state' => "finished"
-                    ));
-
-                if (!empty($latestAttempt)) {
-                    $attempt = $latestAttempt;
-                }
-            }
-        }
-
-        return $attempt;
-    }
-
-    public static function get_time_left_instance($instance) {
-        global $DB, $USER;
-
-        $lastAttempt = Exam::get_exam_attempt($instance, $USER->id);
-
-        if (empty($lastAttempt)) {
-            return false;
-        } else {
-            $submitted = new \DateTime("@$lastAttempt->timefinish");
-            $submitted->setTimezone(new \DateTimeZone("UTC"));
-
-            $available = $submitted->add(new \DateInterval(DELAY));
-
-            $present = new \DateTime('now');
-            $present->setTimezone(new \DateTimeZone("UTC"));
-
-            if ($available < $present) {
-                return false;
-            } else {
-                $diff = $present->diff($available);
-
-                return $diff;
-            }
-        }
-    }
-
-    public static function get_time_left_cmid($cmid) {
-        global $DB, $USER;
-
-        // $cm = get_coursemodule_from_id('quiz', $cmid);
-        $cm = $DB->get_record('course_modules', array('id' => $cmid), '*', IGNORE_MISSING);
-
-        if (!empty($cm)) {
-            $instance = $cm->instance;
-            return Exam::get_time_left_instance($instance);
-        } else {
-            return "false";
-        }
-    }
+	/**
+	 *  A method to determine whether the current user has a previous
+	 *  attempt on the examination.
+	 *
+	 *  @return boolean Whether the user has attempted the exam before.
+	 */
+	public static function has_user_attempt($instance, $user) {
+		global $DB;
+
+		$attempt = $DB->get_record(ATTEMPTS_TABLE, array(
+			'quiz' => $instance,
+			'userid' => $user
+		));
+
+		return (!empty($attempt)) ? true : false;
+	}
+
+	public static function get_user_attempt($instance, $user) {
+		global $DB;
+
+		$attempt = $DB->get_record(ATTEMPTS_TABLE, array(
+			'quiz' => $instance,
+			'userid' => $user
+		));
+
+		return $attempt;
+	}
+
+	public static function get_exam_attempt($instance, $user) {
+		global $DB;
+
+		$attempt = false;
+		$child = $DB->get_record(CHILD_TABLE, array('instance' => $instance));
+		$parent = $DB->get_record(EXAMS_TABLE, array('id' => $child->parent));
+		$children = $DB->get_records(CHILD_TABLE, array('parent' => $parent->id));
+
+		$index = 0;
+		$childQuery = '(';
+		foreach ($children as $key => $child) {
+			$childQuery .= $child->instance;
+
+			if ($index !== count($children) - 1) {
+				$childQuery .= ',';
+			}
+
+			$index++;
+		}
+		$childQuery .= ')';
+
+		if ($childQuery !== '()') {
+			if (!empty($child)) {
+				$latestAttempt = $DB->get_record_sql(
+					'SELECT * FROM mdl_'.ATTEMPTS_TABLE.' WHERE quiz IN '.
+					$childQuery.
+					' AND userid = :userid AND state = :state AND timefinish < UNIX_TIMESTAMP() ORDER BY timefinish DESC LIMIT 1',
+					array(
+						'userid' => $user,
+						'state' => "finished"
+					));
+
+				if (!empty($latestAttempt)) {
+					$attempt = $latestAttempt;
+				}
+			}
+		}
+
+		return $attempt;
+	}
+
+	public static function get_time_left_instance($instance) {
+		global $DB, $USER;
+
+		$parent = Exam::get_parent($instance);
+		$lastAttempt = Exam::get_exam_attempt($instance, $USER->id);
++       $delay = "PT".$parent->delay."S";
+
+		if (empty($lastAttempt)) {
+			return false;
+		} else {
+			$submitted = new \DateTime("@$lastAttempt->timefinish");
+			$submitted->setTimezone(new \DateTimeZone("UTC"));
+
+			$available = $submitted->add(new \DateInterval($delay));
+
+			$present = new \DateTime('now');
+			$present->setTimezone(new \DateTimeZone("UTC"));
+
+			if ($available < $present) {
+				return false;
+			} else {
+				$diff = $present->diff($available);
+				return $diff;
+			}
+		}
+	}
+
+	public static function get_time_left_cmid($cmid) {
+		global $DB, $USER;
+
+		// $cm = get_coursemodule_from_id('quiz', $cmid);
+		$cm = $DB->get_record('course_modules', array('id' => $cmid), '*', IGNORE_MISSING);
+
+		if (!empty($cm)) {
+			$instance = $cm->instance;
+			return Exam::get_time_left_instance($instance);
+		} else {
+			return "false";
+		}
+	}
+
+	public static function get_child($instance) {
+		global $DB;
+
+		$child = $DB->get_record(CHILD_TABLE, array('instance' => $instance));
+		return $child;
+	}
+
+	/**
+	 *  A method to check whether an examination is ready to be re-attempted by the
+	 *  current user.
+	 *
+	 *  @param Object Attempt object from the database.
+	 *  @return boolean Whether the exam is ready to be re-attempted by the current user.
+	 */
+	public static function is_ready($attempt, $parent) {
+		global $DB;
+
+		$finished = new \DateTime("@$attempt->timefinish");
+		$finished->setTimezone(new \DateTimeZone("UTC"));
+		$present = new \DateTime('now');
+		$delay = "PT{$parent->delay()}S";
+		$ready = $finished->add(new \DateInterval($delay));
 
-    public static function get_child($instance) {
-        global $DB;
+		return ($ready < $present) ? true : false;
+	}
 
-        $child = $DB->get_record(CHILD_TABLE, array('instance' => $instance));
-        return $child;
-    }
+	/**
+	 *  A method to check, in the database, whether a quiz is classed as an exam or not.
+	 *
+	 *  @param integer The instance of the quiz (exam) in question.
+	 *  @return boolean Whether the quiz is classified as an examination or not.
+	 */
+	public static function is_exam($instance) {
+		global $DB;
 
-    /**
-     *  A method to check whether an examination is ready to be re-attempted by the
-     *  current user.
-     *
-     *  @param Object Attempt object from the database.
-     *  @return boolean Whether the exam is ready to be re-attempted by the current user.
-     */
-    public static function is_ready($attempt) {
-        global $DB;
+		$exam = $DB->get_record(CHILD_TABLE, array('instance' => $instance));
+		return !empty($exam) ? true : false;
+	}
 
-        $finished = new \DateTime("@$attempt->timefinish");
-        $finished->setTimezone(new \DateTimeZone("UTC"));
-        $present = new \DateTime('now');
-        $ready = $finished->add(new \DateInterval(DELAY));
+	/**
+	 *  A method to check, in the database, whether an exam has any attempts on it.
+	 *
+	 *  @param integer The instance of the quiz (exam) in question.
+	 *  @return boolean Whether the quiz has any attempts on it at all.
+	 */
+	public static function has_attempts($instance) {
+		global $DB;
 
-        return ($ready < $present) ? true : false;
-    }
+		$child = $DB->get_record(CHILD_TABLE, array('id' => $instance));
+		return ($child->attempts > 0) ? true : false;
+	}
 
-    /**
-     *  A method to check, in the database, whether a quiz is classed as an exam or not.
-     *
-     *  @param integer The instance of the quiz (exam) in question.
-     *  @return boolean Whether the quiz is classified as an examination or not.
-     */
-    public static function is_exam($instance) {
-        global $DB;
+	public static function get_parent($instance) {
+		global $DB;
 
-        $exam = $DB->get_record(CHILD_TABLE, array('instance' => $instance));
-        return !empty($exam) ? true : false;
-    }
+		$child = $DB->get_record(CHILD_TABLE, array('instance' => $instance));
 
-    /**
-     *  A method to check, in the database, whether an exam has any attempts on it.
-     *
-     *  @param integer The instance of the quiz (exam) in question.
-     *  @return boolean Whether the quiz has any attempts on it at all.
-     */
-    public static function has_attempts($instance) {
-        global $DB;
+		if (empty($child)) {
+			return false;
+		}
 
-        $child = $DB->get_record(CHILD_TABLE, array('id' => $instance));
-        return ($child->attempts > 0) ? true : false;
-    }
+		$parent = $DB->get_record(EXAMS_TABLE, array('id' => $child->parent));
 
-    public static function get_parent($instance) {
-        global $DB;
+		if (empty($parent)) {
+			return false;
+		}
 
-        $child = $DB->get_record(CHILD_TABLE, array('instance' => $instance));
+		return $parent;
+	}
 
-        if (empty($child)) {
-            return false;
-        }
+	public static function create_parent($name, $children = array()) {
+		global $DB, $PAGE;
 
-        $parent = $DB->get_record(EXAMS_TABLE, array('id' => $child->parent));
+		$exam = new \stdClass();
+		$exam->name = $name;
 
-        if (empty($parent)) {
-            return false;
-        }
+		$recordid = $DB->insert_record(EXAMS_TABLE, $exam);
 
-        return $parent;
-    }
+		return $recordid;
+	}
 
-    public static function create_parent($name, $children = array()) {
-        global $DB, $PAGE;
+	public static function delete_parent($id) {
+		global $DB;
 
-        $exam = new \stdClass();
-        $exam->name = $name;
+		$DB->delete_records(EXAMS_TABLE, array('id' => $id));
+		$DB->delete_records(CHILD_TABLE, array('parent' => $id));
+		$DB->delete_records(RELATIONS_TABLE, array('parent' => $id));
+	}
 
-        $recordid = $DB->insert_record(EXAMS_TABLE, $exam);
+	public static function create($instance, $parent) {
+		global $DB;
 
-        return $recordid;
-    }
+		$recordid = -1;
 
-    public static function delete_parent($id) {
-        global $DB;
+		$child = new \stdClass();
+		$child->instance = $instance;
+		$child->parent = $parent;
 
-        $DB->delete_records(EXAMS_TABLE, array('id' => $id));
-        $DB->delete_records(CHILD_TABLE, array('parent' => $id));
-        $DB->delete_records(RELATIONS_TABLE, array('parent' => $id));
-    }
+		$parent = $DB->get_record(EXAMS_TABLE, array('id' => $parent));
 
-    public static function create($instance, $parent) {
-        global $DB;
+		if (!empty($parent)) {
+			$recordid = $DB->insert_record(CHILD_TABLE, $child);
 
-        $recordid = -1;
+			$relationship = new \stdClass();
+			$relationship->parent = $parent->id;
+			$relationship->child = $recordid;
 
-        $child = new \stdClass();
-        $child->instance = $instance;
-        $child->parent = $parent;
+			$DB->insert_record(RELATIONS_TABLE, $relationship);
+			return json_encode($relationship);
+		}
 
-        $parent = $DB->get_record(EXAMS_TABLE, array('id' => $parent));
+		return $recordid;
+	}
 
-        if (!empty($parent)) {
-            $recordid = $DB->insert_record(CHILD_TABLE, $child);
+	public static function get_all_exams() {
+		global $DB;
 
-            $relationship = new \stdClass();
-            $relationship->parent = $parent->id;
-            $relationship->child = $recordid;
+		$examParents = $DB->get_records_sql("SELECT * FROM mdl_".EXAMS_TABLE);
 
-            $DB->insert_record(RELATIONS_TABLE, $relationship);
-            return json_encode($relationship);
-        }
+		if (empty($examParents)) {
+			$examParents = array();
+		}
 
-        return $recordid;
-    }
+		return $examParents;
+	}
 
-    public static function get_all_exams() {
-        global $DB;
+	public static function get_all_children() {
+		global $DB;
 
-        $examParents = $DB->get_records_sql("SELECT * FROM mdl_".EXAMS_TABLE);
+		$children = $DB->get_records_sql("SELECT * FROM mdl_".CHILD_TABLE);
+		return $children;
+	}
 
-        if (empty($examParents)) {
-            $examParents = array();
-        }
+	public static function get_related_exams($instance) {
+		global $DB;
 
-        return $examParents;
-    }
+		$child = $DB->get_record(CHILD_TABLE, array('instance' => $instance));
+		$children = $DB->get_records(CHILD_TABLE, array('parent' => $child->parent));
 
-    public static function get_all_children() {
-        global $DB;
+		return $children;
+	}
 
-        $children = $DB->get_records_sql("SELECT * FROM mdl_".CHILD_TABLE);
-        return $children;
-    }
+	public static function get_related_attempts($user, $parent) {
+		global $DB;
 
-    public static function get_related_exams($instance) {
-        global $DB;
+		$children = $DB->get_records(CHILD_TABLE, array('parent' => $parent->id));
+		$attempts = array();
 
-        $child = $DB->get_record(CHILD_TABLE, array('instance' => $instance));
-        $children = $DB->get_records(CHILD_TABLE, array('parent' => $child->parent));
+		foreach ($children as $child) {
+			$attempt = Exam::get_exam_attempt($child, $user);
 
-        return $children;
-    }
+			if (!empty($attempt)) {
+				$attempts[] = $attempt;
+			}
+		}
 
-    public static function get_related_attempts($user, $parent) {
-        global $DB;
+		return $attempts;
+	}
 
-        $children = $DB->get_records(CHILD_TABLE, array('parent' => $parent->id));
-        $attempts = array();
+	public static function delete_from_instance($instance) {
+		global $DB;
 
-        foreach ($children as $child) {
-            $attempt = Exam::get_exam_attempt($child, $user);
+		$child = $DB->get_record(CHILD_TABLE, array('instance' => $instance));
 
-            if (!empty($attempt)) {
-                $attempts[] = $attempt;
-            }
-        }
+		if (!empty($child)) {
+			$parent = $DB->get_record(EXAMS_TABLE, array('id' => $child->parent));
+			$DB->delete_records(RELATIONS_TABLE, array('child' => $child->id));
+			$DB->delete_records(CHILD_TABLE, array('instance' => $instance));
+		}
+	}
 
-        return $attempts;
-    }
+	public static function update_parent($parentId, $delay) {
+		global $DB;
 
-    public static function delete_from_instance($instance) {
-        global $DB;
+		$parent = $DB->get_record(EXAMS_TABLE, array('id' => $parentId));
+		$parent->delay = $delay;
 
-        $child = $DB->get_record(CHILD_TABLE, array('instance' => $instance));
+		$DB->update_record(EXAMS_TABLE, $parent);
+	}
 
-        if (!empty($child)) {
-            $parent = $DB->get_record(EXAMS_TABLE, array('id' => $child->parent));
-            $DB->delete_records(RELATIONS_TABLE, array('child' => $child->id));
-            $DB->delete_records(CHILD_TABLE, array('instance' => $instance));
-        }
-    }
+	public static function update_child($instance, $parent) {
+		global $DB;
 
-    public static function update_child($instance, $parent) {
-        global $DB;
+		$child = $DB->get_record(CHILD_TABLE, array('instance' => $instance));
+		$parent = $DB->get_record(EXAMS_TABLE, array('id' => $child->parent));
 
-        $child = $DB->get_record(CHILD_TABLE, array('instance' => $instance));
-        $parent = $DB->get_record(EXAMS_TABLE, array('id' => $child->parent));
+		$relationship = new \stdClass();
+		$relationship->child = $child->id;
+		$relationship->parent = $parent->id;
 
-        $relationship = new \stdClass();
-        $relationship->child = $child->id;
-        $relationship->parent = $parent->id;
 
 
+		$DB->delete_records(RELATIONS_TABLE, array('child' => $child->id, 'parent' => $parent->id));
+		$DB->insert_record(RELATIONS_TABLE, $relationship);
+	}
 
-        $DB->delete_records(RELATIONS_TABLE, array('child' => $child->id, 'parent' => $parent->id));
-        $DB->insert_record(RELATIONS_TABLE, $relationship);
-    }
+	public static function cmid_to_cm($id) {
+		$cm = get_coursemodule_from_id('quiz', $id);
+		return $cm;
+	}
 
-    public static function cmid_to_cm($id) {
-        $cm = get_coursemodule_from_id('quiz', $id);
-        return $cm;
-    }
+	public static function cmid_to_instance($id) {
+		global $DB;
 
-    public static function cmid_to_instance($id) {
-        global $DB;
+		$cm = $DB->get_record('course_modules', array('id' => $cmid), '*', IGNORE_MISSING);
+		if (empty($cm)) {
+			 $cm = "false";
+		}
 
-        $cm = $DB->get_record('course_modules', array('id' => $cmid), '*', IGNORE_MISSING);
-        if (empty($cm)) {
-             $cm = "false";
-        }
-
-        return json_encode($cm);
-    }
+		return json_encode($cm);
+	}
 }

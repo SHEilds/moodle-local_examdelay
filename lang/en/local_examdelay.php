@@ -26,5 +26,18 @@ defined('MOODLE_INTERNAL') || die();
 $string['pluginname'] = 'Exam Delay';
 $string['plugingroup'] = 'Exam Delay';
 
+// Settings
+$string['defaultexamdelay'] = 'Default Exam Delay';
+$string['defaultexamdelay_desc'] = 'The default delay, in seconds, between exam attempts.';
+$string['defaultperiod'] = 'Default Delay Period';
+$string['defaultperiod_desc'] = 'The default scale of the delay. A multiplier for the Exam Delay.';
 $string['examdelay'] = 'Exam Delay';
 $string['examdelay_desc'] = 'The delay, in seconds, between exam attempts.';
+$string['period'] = 'Delay Period';
+$string['period_desc'] = 'The scale of the delay. A multiplier for the Exam Delay.';
+
+// Module Settings
+$string['parentname'] = 'Parent Name';
+$string['createparent'] = 'Create Parent';
+$string['deleteparent'] = 'Delete Parent';
+$string['exammode'] = 'Exam Mode';

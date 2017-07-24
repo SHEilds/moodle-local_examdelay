@@ -22,7 +22,7 @@
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-namespace local_examdelay;
+// namespace local_examdelay;
 
 date_default_timezone_set('UTC');
 
