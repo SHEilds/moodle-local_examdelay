@@ -14,11 +14,29 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
+/**
+ * Global Settings
+ *
+ * @package   local_examdelay
+ * @copyright 2020 Adam King, SHEilds eLearning
+ * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
 defined('MOODLE_INTERNAL') || die();
 
-function xmldb_local_examdelay_upgrade($oldversion)
+if ($hassiteconfig)
 {
-    global $DB;
+    $ADMIN->add('modules', new admin_category('examdelay', get_string('plugingroup', 'local_examdelay')));
 
-    return true;
+    $page = new admin_settingpage('examdelaypage', get_string('pluginname', 'local_examdelay'));
+
+    $page->add(new admin_setting_configduration(
+        'local_examdelay/examdelay',
+        get_string('examdelay', 'local_examdelay'),
+        get_string('examdelay_desc', 'local_examdelay'),
+        0,      // Seconds
+        1
+    ));    // Seconds
+
+    $ADMIN->add('examdelay', $page);
 }

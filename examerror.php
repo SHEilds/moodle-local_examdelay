@@ -18,11 +18,11 @@
  * Exam Unavailable
  *
  * @package   local_examdelay
- * @copyright 2017 Adam King, SHEilds eLearning
+ * @copyright 2020 Adam King, SHEilds eLearning
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-// namespace local_examdelay;
+namespace local_examdelay;
 
 date_default_timezone_set('UTC');
 
@@ -44,7 +44,8 @@ $latestAttempt = Exam::get_exam_attempt($instance, $USER->id);
 $timeleft = Exam::get_time_left_instance($instance);
 
 $timestring = "ready";
-if ($timeleft !== false) {
+if ($timeleft !== false)
+{
     $timestring = $timeleft->format('%d days, %h hours, %i minutes and %s seconds');
 }
 
@@ -52,19 +53,30 @@ $PAGE->set_context(\context_system::instance());
 $PAGE->set_pagelayout('admin');
 $PAGE->set_title("Exam Not Ready");
 $PAGE->set_heading("Exam Attempt");
-$PAGE->set_url($CFG->wwwroot.'/examerror.php');
+$PAGE->set_url($CFG->wwwroot . '/examerror.php');
 
 echo $OUTPUT->header();
 
 // Print error to the user.
 $container = "<div style ='margin:auto;text-align:center;'>";
-switch($error) {
+
+switch ($error)
+{
     case NOTREADY:
         $error = NOTREADY;
-        if ($timestring === "ready") {
+        if ($timestring === "ready")
+        {
             $container .= "<p>The exam is ready for you to re-attempt. Please choose the next available examination.</p>";
-        } else {
-            $container .= "<p>If you have failed your first attempt of the exam, you must wait 10 days and you can then attempt the next exam.</p>".
+            // $url = new \moodle_url("/course/view.php", array(
+            //     'id' => $course
+            // ));
+            // redirect($url);
+        }
+        else
+        {
+            $settingPeriod = Exam::get_delay_setting_string();
+
+            $container .= "<p>If you have failed your first attempt of the exam, you must wait " . $settingPeriod . " and you can then attempt the next exam.</p>" .
                 "<p>Please try the next exam in <b>$timestring.</b></p>";
         }
         break;
@@ -81,14 +93,16 @@ switch($error) {
         $container .= "<p>Something went wrong trying to attempt an exam.</p>";
         break;
 }
+
 $container .= "</div>";
+echo $container;
 
 // Print continue button.
-echo "<form method='post' action='$CFG->wwwroot/course/view.php'>".
-        "<div style='margin:auto;text-align:center;'>".
-            "<input type='submit' value='Continue'>".
-            "<input type='hidden' name='id' value='$course'>".
-        "</div>".
-     "</form>";
+echo "<form method='post' action='$CFG->wwwroot/course/view.php'>" .
+    "<div style='margin:auto;text-align:center;'>" .
+    "<input class='btn btn-primary' type='submit' value='Continue'>" .
+    "<input type='hidden' name='id' value='$course'>" .
+    "</div>" .
+    "</form>";
 
 echo $OUTPUT->footer();
