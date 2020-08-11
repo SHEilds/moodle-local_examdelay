@@ -22,34 +22,21 @@
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-namespace local_examdelay;
-
-use DateInterval;
-use DateTime;
-
 date_default_timezone_set('UTC');
 
 // Replace moodle internal with files that offer the variables.
 require_once(__DIR__ . '/../../config.php');
 require_once($CFG->dirroot . '/user/profile/lib.php');
 
-const RELATIONS_TABLE = 'local_examdelay_relations';
 const ATTEMPTS_TABLE = 'quiz_attempts';
 const EXAMS_TABLE = 'local_examdelay_exams';
 const CHILD_TABLE = 'local_examdelay_children';
 
 const MINUTE = 60;
-const HOUR = 3600;
-const DAY = 86400;
-const WEEK = 604800;
-
-// Define the DELAY constant from config.
-if (!defined('DELAY'))
-{
-    $config = get_config('local_examdelay');
-    $examdelay = "PT" . $config->examdelay . "S" ?? "PT0S";
-    define('DELAY', $examdelay);
-}
+const HOUR = MINUTE * 60;
+const DAY = HOUR * 24;
+const WEEK = DAY * 7;
+const YEAR = DAY * 365;
 
 class Exam
 {
@@ -68,7 +55,7 @@ class Exam
             'userid' => $user
         ));
 
-        return (!empty($attempt)) ? true : false;
+        return (!empty($attempt));
     }
 
     public static function get_user_attempt($instance, $user)
@@ -96,12 +83,12 @@ class Exam
 
     public static function get_exam_attempt($instance, $user)
     {
-        global $DB;
+        global $CFG, $DB;
 
         $child = $DB->get_record(CHILD_TABLE, array('instance' => $instance));
 
         // If we can't find this exam child, we can't go any further.
-        if (!$child)
+        if (!$child || empty($child))
         {
             return false;
         }
@@ -126,22 +113,19 @@ class Exam
 
         if ($childQuery !== '()')
         {
-            if (!empty($child))
-            {
-                $latestAttempt = $DB->get_record_sql(
-                    'SELECT * FROM mdl_' . ATTEMPTS_TABLE . ' WHERE quiz IN ' .
-                        $childQuery .
-                        ' AND userid = :userid AND state = :state AND timefinish < UNIX_TIMESTAMP() ORDER BY timefinish DESC LIMIT 1',
-                    array(
-                        'userid' => $user,
-                        'state' => "finished"
-                    )
-                );
+            $latestAttempt = $DB->get_record_sql(
+                'SELECT * FROM ' . $CFG->prefix . ATTEMPTS_TABLE . ' WHERE quiz IN ' .
+                    $childQuery .
+                    ' AND userid = :userid AND state = :state AND timefinish < UNIX_TIMESTAMP() ORDER BY timefinish DESC LIMIT 1',
+                array(
+                    'userid' => $user,
+                    'state' => "finished"
+                )
+            );
 
-                if (!empty($latestAttempt))
-                {
-                    return $latestAttempt;
-                }
+            if (!empty($latestAttempt))
+            {
+                return $latestAttempt;
             }
         }
 
@@ -160,10 +144,12 @@ class Exam
         }
         else
         {
+            $delay = Exam::get_delay_setting_interval($instance);
+
             $submitted = new \DateTime("@$lastAttempt->timefinish");
             $submitted->setTimezone(new \DateTimeZone("UTC"));
 
-            $available = $submitted->add(new \DateInterval(DELAY));
+            $available = $submitted->add($delay);
 
             $present = new \DateTime('now');
             $present->setTimezone(new \DateTimeZone("UTC"));
@@ -204,7 +190,18 @@ class Exam
         global $DB;
 
         $child = $DB->get_record(CHILD_TABLE, array('instance' => $instance));
-        return $child;
+        return $child ?? null;
+    }
+
+    public static function update_child($childId, $parentId)
+    {
+        global $DB;
+
+        $child = new stdClass();
+        $child->id = $childId;
+        $child->parent = $parentId;
+
+        $DB->update_record(CHILD_TABLE, $child);
     }
 
     /**
@@ -216,14 +213,14 @@ class Exam
      */
     public static function is_ready($attempt)
     {
-        global $DB;
+        $delay = Exam::get_delay_setting_interval($attempt->quiz);
 
         $finished = new \DateTime("@$attempt->timefinish");
         $finished->setTimezone(new \DateTimeZone("UTC"));
         $present = new \DateTime('now');
-        $ready = $finished->add(new \DateInterval(DELAY));
+        $ready = $finished->add($delay);
 
-        return ($ready < $present) ? true : false;
+        return ($ready < $present);
     }
 
     /**
@@ -237,7 +234,7 @@ class Exam
         global $DB;
 
         $exam = $DB->get_record(CHILD_TABLE, array('instance' => $instance));
-        return !empty($exam) ? true : false;
+        return !empty($exam);
     }
 
     /**
@@ -275,12 +272,22 @@ class Exam
         return $parent;
     }
 
-    public static function create_parent($name, $children = array())
+    public static function get_parents()
+    {
+        global $DB;
+
+        $parents = $DB->get_records(EXAMS_TABLE);
+
+        return $parents ?? [];
+    }
+
+    public static function create_parent($name, $delay, $children = array())
     {
         global $DB, $PAGE;
 
         $exam = new \stdClass();
         $exam->name = $name;
+        $exam->delay = $delay;
 
         $recordid = $DB->insert_record(EXAMS_TABLE, $exam);
 
@@ -293,14 +300,14 @@ class Exam
 
         $DB->delete_records(EXAMS_TABLE, array('id' => $id));
         $DB->delete_records(CHILD_TABLE, array('parent' => $id));
-        $DB->delete_records(RELATIONS_TABLE, array('parent' => $id));
     }
 
+    /**
+     * Create an instance of an Exam child.
+     */
     public static function create($instance, $parent)
     {
         global $DB;
-
-        $recordid = -1;
 
         $child = new \stdClass();
         $child->instance = $instance;
@@ -310,33 +317,27 @@ class Exam
 
         if (!empty($parent))
         {
-            $recordid = $DB->insert_record(CHILD_TABLE, $child);
-
-            $relationship = new \stdClass();
-            $relationship->parent = $parent->id;
-            $relationship->child = $recordid;
-
-            $DB->insert_record(RELATIONS_TABLE, $relationship);
-            return json_encode($relationship);
+            $id = $DB->insert_record(CHILD_TABLE, $child);
+            return $DB->get_record(CHILD_TABLE, ['id' => $id]);
         }
 
-        return $recordid;
+        return null;
     }
 
     public static function get_all_exams()
     {
-        global $DB;
+        global $CFG, $DB;
 
-        $examParents = $DB->get_records_sql("SELECT * FROM mdl_" . EXAMS_TABLE);
-        return (!empty($examParents)) ? $examParents : [];
+        $examParents = $DB->get_records_sql("SELECT * FROM " . $CFG->prefix . EXAMS_TABLE);
+        return $examParents ?? [];
     }
 
     public static function get_all_children()
     {
-        global $DB;
+        global $CFG, $DB;
 
-        $children = $DB->get_records_sql("SELECT * FROM mdl_" . CHILD_TABLE);
-        return (!empty($children)) ? $children : [];
+        $children = $DB->get_records_sql("SELECT * FROM " . $CFG->prefix . CHILD_TABLE);
+        return $children ?? [];
     }
 
     public static function get_related_exams($instance)
@@ -346,7 +347,7 @@ class Exam
         $child = $DB->get_record(CHILD_TABLE, array('instance' => $instance));
         $children = $DB->get_records(CHILD_TABLE, array('parent' => $child->parent));
 
-        return $children;
+        return $children ?? [];
     }
 
     public static function get_related_attempts($user, $parent)
@@ -354,7 +355,7 @@ class Exam
         global $DB;
 
         $children = $DB->get_records(CHILD_TABLE, array('parent' => $parent->id));
-        $attempts = array();
+        $attempts = [];
 
         foreach ($children as $child)
         {
@@ -372,43 +373,47 @@ class Exam
     public static function delete_from_instance($instance)
     {
         global $DB;
-
-        $child = $DB->get_record(CHILD_TABLE, array('instance' => $instance));
-
-        if (!empty($child))
-        {
-            $parent = $DB->get_record(EXAMS_TABLE, array('id' => $child->parent));
-            $DB->delete_records(RELATIONS_TABLE, array('child' => $child->id));
-            $DB->delete_records(CHILD_TABLE, array('instance' => $instance));
-        }
+        $DB->delete_records(CHILD_TABLE, array('instance' => $instance));
     }
 
-    public static function update_child($instance, $parent)
+    public static function update_parent($id, $name, $delay)
     {
         global $DB;
 
-        $child = $DB->get_record(CHILD_TABLE, array('instance' => $instance));
-        $parent = $DB->get_record(EXAMS_TABLE, array('id' => $child->parent));
+        $parent = $DB->get_record(EXAMS_TABLE, [
+            'id' => $id
+        ]);
 
-        $relationship = new \stdClass();
-        $relationship->child = $child->id;
-        $relationship->parent = $parent->id;
+        if ($parent)
+        {
+            $parent->name = $name;
+            $parent->delay = $delay;
 
-        $DB->delete_records(RELATIONS_TABLE, array('child' => $child->id, 'parent' => $parent->id));
-        $DB->insert_record(RELATIONS_TABLE, $relationship);
+            $DB->update_record(EXAMS_TABLE, $parent);
+        }
     }
 
     // Returns the delay config time, in seconds.
-    public static function get_delay_setting()
+    public static function get_delay_setting($instance)
     {
-        $config = get_config('local_examdelay');
-        return $config->examdelay;
+        $exam = Exam::get_parent($instance);
+        return $exam->delay;
     }
 
-    public static function get_delay_setting_string()
+    public static function get_delay_setting_interval($instance)
     {
-        $delay = Exam::get_delay_setting();
+        $delay = Exam::get_delay_setting($instance);
+        return new DateInterval('PT' . $delay . 'S');
+    }
 
+    public static function get_delay_setting_string_instance($instance)
+    {
+        $delay = Exam::get_delay_setting($instance);
+        return Exam::get_delay_setting_string($delay);
+    }
+
+    public static function get_delay_setting_string($delay)
+    {
         // Create two dummy date-times because DateInterval 
         // doesn't recalculate overflow values. 
         $now = new DateTime();
@@ -421,45 +426,74 @@ class Exam
 
         $periodString = "";
         // Minutes.
-        if ($delay < HOUR)
+        if ($delay < MINUTE)
+        {
+            $s = $delay > 1 ? 's' : '';
+            $periodString = "$delay second$s";
+        }
+        else if ($delay >= MINUTE && $delay < HOUR)
         {
             // If more than one minute set multiple.
-            $s = ($delay > (MINUTE * 2)) ? 's' : '';
-            $periodString = $delayInterval->i . " minute" . $s;
+            $s = Exam::quotient($delay, MINUTE) > 1 ? 's' : '';
+            $periodString = "$delayInterval->i minute$s";
         }
         // Hours.
         else if ($delay >= HOUR && $delay < DAY)
         {
             // If more than one hour set multiple.
-            $s = ($delay > (HOUR * 2)) ? 's' : '';
-            $periodString = $delayInterval->h . " hour" . $s;
+            $s = Exam::quotient($delay, HOUR) > 1 ? 's' : '';
+            $periodString = "$delayInterval->h hour$s";
         }
-        // Days.
-        else if ($delay >= DAY && $delay < WEEK)
+        // Weeks + Days.
+        else if ($delay >= DAY)
         {
-            // If more than one day set multiple.
-            $s = (floor($delay / DAY) > 1) ? 's' : '';
-            $periodString = $delayInterval->d . " day" . $s;
-        }
-        // Weeks.
-        else if ($delay >= WEEK)
-        {
-            // If more than one week set multiple.
-            $s = (floor($delay / WEEK) > 1) ? 's' : '';
-            $numWeeks = floor($delayInterval->d / WEEK);
-            $periodString = $numWeeks . " week" . $s;
+            if ($delay >= WEEK && $delay < YEAR)
+            {
+                $quotient = Exam::quotient($delay, WEEK);
+                $remainder = Exam::remainder($delay, WEEK, DAY);
+
+                // If more than one week set multiple.
+                $ws = $quotient > 1 ? 's' : '';
+
+                $periodString = "$quotient week$ws";
+                if ($remainder > 0)
+                {
+                    $ds = $remainder > 1 ? 's' : '';
+                    $periodString .= " and $remainder day$ds";
+                }
+            }
+            else if ($delay >= YEAR)
+            {
+                $quotient = Exam::quotient($delay, YEAR);
+                $remainder = Exam::remainder($delay, YEAR, DAY);
+
+                $ys = $quotient > 1 ? 's' : '';
+
+                $periodString = "$quotient year$ys";
+                if ($remainder > 0)
+                {
+                    $ds = $remainder > 1 ? 's' : '';
+                    $periodString .= " and $remainder day$ds";
+                }
+            }
+            else
+            {
+                // If more than one day set multiple.
+                $s = (Exam::quotient($delay, DAY) > 1) ? 's' : '';
+                $periodString = "$delayInterval->d day$s";
+            }
         }
 
         return $periodString;
     }
 
-    public static function cmid_to_cm($id)
+    public static function cmid_to_cm($cmid)
     {
-        $cm = get_coursemodule_from_id('quiz', $id);
+        $cm = get_coursemodule_from_id('quiz', $cmid);
         return $cm;
     }
 
-    public static function cmid_to_instance($id)
+    public static function cmid_to_instance($cmid)
     {
         global $DB;
 
@@ -470,5 +504,15 @@ class Exam
         }
 
         return json_encode($cm);
+    }
+
+    private static function quotient($time, $timespan)
+    {
+        return floor($time / $timespan);
+    }
+
+    private static function remainder($time, $timespan, $remainderTime)
+    {
+        return floor(($time % $timespan) / $remainderTime);
     }
 }

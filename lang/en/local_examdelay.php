@@ -17,7 +17,7 @@
 /**
  * Language strings
  *
- * @package   local_lessonexport
+ * @package   local_examdelay
  * @copyright 2014 Davo Smith, Synergy Learning
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -26,5 +26,16 @@ defined('MOODLE_INTERNAL') || die();
 $string['pluginname'] = 'Exam Delay';
 $string['plugingroup'] = 'Exam Delay';
 
+$string['isexam'] = 'Exam State';
+$string['examparent'] = 'Exam Parent';
+$string['examname'] = 'Exam Name';
+$string['deleteexamparent'] = 'Delete';
+$string['submitexamparent'] = 'Create';
+$string['submitexamparentedit'] = 'Update';
+
 $string['examdelay'] = 'Exam Delay';
 $string['examdelay_desc'] = 'The delay, in seconds, between exam attempts.';
+
+$string['exameditformheader'] = 'Modify Examination';
+$string['examcreateformheader'] = 'Create Examination';
+$string['exammodformheader'] = 'Examination Module Settings';

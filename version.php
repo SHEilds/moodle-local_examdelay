@@ -24,11 +24,10 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->version   = 2020072900;
-$plugin->requires  = 2014111012;
-$plugin->cron      = 1;
+$plugin->version   = 2020081101;
+$plugin->requires  = 2014051200;
 $plugin->component = 'local_examdelay';
-$plugin->maturity  = MATURITY_ALPHA;
+$plugin->maturity  = MATURITY_STABLE;
 $plugin->release   = "2020072700";
 
 $plugin->dependencies = array(

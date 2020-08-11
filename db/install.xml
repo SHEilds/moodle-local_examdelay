@@ -1,40 +1,29 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-  <XMLDB PATH="local/examdelay/db" VERSION="20170523" COMMENT="XMLDB file for Moodle local/examdelay"
-    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:noNamespaceSchemaLocation="../../../lib/xmldb/xmldb.xsd">
+<XMLDB PATH="local/examdelay/db" VERSION="20170523" COMMENT="XMLDB file for Moodle local/examdelay"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../lib/xmldb/xmldb.xsd">
     <TABLES>
 
-      <TABLE NAME="local_examdelay_exams" COMMENT="For tracking exams and their course contexts." NEXT="local_examdelay_children">
-        <FIELDS>
-          <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true" NEXT="name"/>
-          <FIELD NAME="name" TYPE="text" NOTNULL="true" SEQUENCE="false" PREVIOUS="id"/>
-        </FIELDS>
-        <KEYS>
-          <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
-        </KEYS>
-      </TABLE>
+        <TABLE NAME="local_examdelay_exams" COMMENT="For tracking exams and their course contexts." NEXT="local_examdelay_children">
+            <FIELDS>
+                <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true" NEXT="name"/>
+                <FIELD NAME="name" TYPE="text" NOTNULL="true" SEQUENCE="false" PREVIOUS="id"/>
+                <FIELD NAME="delay" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" PREVIOUS="name" />
+            </FIELDS>
+            <KEYS>
+                <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+            </KEYS>
+        </TABLE>
 
-      <TABLE NAME="local_examdelay_children" COMMENT="Used to store exam children and their data." PREVIOUS="local_examdelay_exams" NEXT="local_examdelay_relations">
-        <FIELDS>
-          <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true" NEXT="instance"/>
-          <FIELD NAME="instance" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" PREVIOUS="id" NEXT="parent"/>
-          <FIELD NAME="parent" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" PREVIOUS="instance"/>
-        </FIELDS>
-        <KEYS>
-          <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
-        </KEYS>
-      </TABLE>
-
-      <TABLE NAME="local_examdelay_relations" COMMENT="Used for tracking the relations between exams and exam roots" PREVIOUS="local_examdelay_children">
-        <FIELDS>
-          <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true" NEXT="parent"/>
-          <FIELD NAME="parent" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" PREVIOUS="id" NEXT="child"/>
-          <FIELD NAME="child" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" PREVIOUS="parent"/>
-        </FIELDS>
-        <KEYS>
-          <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
-        </KEYS>
-      </TABLE>
+        <TABLE NAME="local_examdelay_children" COMMENT="Used to store exam children and their data." PREVIOUS="local_examdelay_exams" NEXT="local_examdelay_relations">
+            <FIELDS>
+                <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true" NEXT="instance"/>
+                <FIELD NAME="instance" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" PREVIOUS="id" NEXT="parent"/>
+                <FIELD NAME="parent" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" PREVIOUS="instance"/>
+            </FIELDS>
+            <KEYS>
+                <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+            </KEYS>
+        </TABLE>
 
     </TABLES>
-  </XMLDB>
+</XMLDB>

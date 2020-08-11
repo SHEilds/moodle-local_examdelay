@@ -22,20 +22,18 @@
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-namespace local_examdelay;
-
 date_default_timezone_set('UTC');
 
 require_once(__DIR__ . '/../../config.php');
 require_once("$CFG->dirroot/user/profile/lib.php");
-require_once("$CFG->dirroot/local/examdelay/exam.php");
+require_once("exam.php");
 
 const DEF = 0;
 const NOTREADY = 1;
 const ATTEMPTED = 2;
 const NOTEXISTS = 3;
 
-$instance = required_param('id', PARAM_INT);
+$instance = required_param('instance', PARAM_INT);
 $error = required_param('error', PARAM_INT);
 $cmid = required_param('cmid', PARAM_INT);
 $course = required_param('course', PARAM_INT);
@@ -74,7 +72,7 @@ switch ($error)
         }
         else
         {
-            $settingPeriod = Exam::get_delay_setting_string();
+            $settingPeriod = Exam::get_delay_setting_string_instance($instance);
 
             $container .= "<p>If you have failed your first attempt of the exam, you must wait " . $settingPeriod . " and you can then attempt the next exam.</p>" .
                 "<p>Please try the next exam in <b>$timestring.</b></p>";
@@ -97,8 +95,12 @@ switch ($error)
 $container .= "</div>";
 echo $container;
 
+$returnUri = new moodle_url('/course/view.php', [
+    'id' => $course
+]);
+
 // Print continue button.
-echo "<form method='post' action='$CFG->wwwroot/course/view.php'>" .
+echo "<form method='post' action='{$returnUri->out()}'>" .
     "<div style='margin:auto;text-align:center;'>" .
     "<input class='btn btn-primary' type='submit' value='Continue'>" .
     "<input type='hidden' name='id' value='$course'>" .
