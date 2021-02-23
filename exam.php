@@ -31,6 +31,7 @@ require_once($CFG->dirroot . '/user/profile/lib.php');
 const ATTEMPTS_TABLE = 'quiz_attempts';
 const EXAMS_TABLE = 'local_examdelay_exams';
 const CHILD_TABLE = 'local_examdelay_children';
+const GRADE_ITEM_TABLE = 'grade_items';
 
 const MINUTE = 60;
 const HOUR = MINUTE * 60;
@@ -126,6 +127,40 @@ class Exam
             if (!empty($latestAttempt))
             {
                 return $latestAttempt;
+            }
+        }
+
+        return false;
+    }
+
+    public static function get_exam_passed($instance, $user)
+    {
+        global $DB;
+
+        $gradeItem = $DB->get_record(GRADE_ITEM_TABLE, array(
+            'itemtype' => 'mod',
+            'itemmodule' => 'quiz',
+            'iteminstance' => $instance
+        ));
+
+        if (empty($gradeItem)) {
+            // TODO:- Document error and output somewhere.
+            return false;
+        }
+
+        $passGrade = $gradeItem->gradepass;
+
+        $attempts = $DB->get_records(ATTEMPTS_TABLE, array(
+            'quiz' => $instance,
+            'userid' => $user,
+            'state' => 'finished'
+        ));
+
+        foreach ($attempts as $attempt)
+        {
+            if ($attempt->sumgrades >= $passGrade) 
+            {
+                return true;
             }
         }
 
@@ -372,8 +407,19 @@ class Exam
 
     public static function delete_from_instance($instance)
     {
-        global $DB;
+        global $DB;        
         $DB->delete_records(CHILD_TABLE, array('instance' => $instance));
+    }
+
+    public static function delete_unfinished_attempts($instance, $user)
+    {
+        global $DB;
+
+        $DB->delete_records(ATTEMPTS_TABLE, array(
+            'quiz' => $instance,
+            'userid' => $user,
+            'state' => 'inprogress'
+        ));
     }
 
     public static function update_parent($id, $name, $delay)

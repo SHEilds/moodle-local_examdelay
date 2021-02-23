@@ -24,11 +24,11 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->version   = 2020081101;
+$plugin->version   = 2021022300;
 $plugin->requires  = 2014051200;
 $plugin->component = 'local_examdelay';
 $plugin->maturity  = MATURITY_STABLE;
-$plugin->release   = "2020072700";
+$plugin->release   = "1.2";
 
 $plugin->dependencies = array(
     'mod_quiz' => ANY_VERSION,

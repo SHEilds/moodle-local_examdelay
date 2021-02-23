@@ -43,7 +43,7 @@ function local_examdelay_extend_navigation($unused)
     global $PAGE, $USER, $DB, $COURSE;
 
     $adminpagetypes = ['mod-quiz-mod', 'mod-quiz-edit'];
-    $clientpagetypes = ['mod-quiz-view', 'mod-quiz-attempt'];
+    $clientpagetypes = [/*'mod-quiz-view',*/ 'mod-quiz-attempt'];
 
     // Only process the logic if the user lands on a Quiz page of any kind.
     if (in_array($PAGE->pagetype, array_merge($adminpagetypes, $clientpagetypes)))
@@ -80,12 +80,18 @@ function local_examdelay_extend_navigation($unused)
                     {
                         $previousAttempt = Exam::get_user_attempt($instance, $user);
 
+                        // If the user has passed this exam, don't prevent them from viewing it.
+                        if (Exam::get_exam_passed($instance, $user)) return;
+
                         // If the student's previous attempt is finished.
                         if (!empty($previousAttempt) && $previousAttempt->state === "finished")
                         {
                             // If the exam has been touched before and is not ready to be re-attempted, redirect the user.
                             if (!Exam::is_ready($latestAttempt))
                             {
+                                // Ensure any instance started from mod-quiz-attempt is removed.
+                                Exam::delete_unfinished_attempts($instance, $user);
+
                                 $url = new \moodle_url("/local/examdelay/examerror.php", array(
                                     'instance' => $instance,
                                     'cmid' => $PAGE->cm->id,
@@ -103,6 +109,9 @@ function local_examdelay_extend_navigation($unused)
                             // If the exam has not been touched before and is not ready to be re-attempted, redirect the user.
                             if (!Exam::is_ready($latestAttempt))
                             {
+                                // Ensure any instance started from mod-quiz-attempt is removed.
+                                Exam::delete_unfinished_attempts($instance, $user);
+                                
                                 $url = new \moodle_url("/local/examdelay/examerror.php", array(
                                     'instance' => $instance,
                                     'cmid' => $PAGE->cm->id,
